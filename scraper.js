@@ -2,11 +2,18 @@ const rp = require('request-promise')
 // Making Ajax Request from website
 const cheerio = require('cheerio')
 //using Jquery like Dom Selectors
+const fs = require('fs-extra')
+//write files
+const download = require('download');
+//download System
 
 
 
 
 let CollectionLinks = []
+let img = []
+let words = [];
+let title = '';
 
 let DataForEachYear = [{
     name: null,
@@ -36,7 +43,7 @@ rp(options)
                 'uri': `http://vogue.de` + $(ht).attr('href') + `/`
             })
         });
-        process.stdout.write('loading CollectionLinks');
+        process.stdout.write('Get Years...');
     })
     .then(() => {
         getCitiesOfEachYear(CollectionLinks)
@@ -51,7 +58,7 @@ function getCitiesOfEachYear(CollectionLinks) {
     let cities = []
     let i = 0;
     function next() {
-        if (i < CollectionLinks.length ) {
+        if (i < 10/* CollectionLinks.length */) {   ///EDIT Length HERE
             let options = {
                 uri: CollectionLinks[i].uri,
                 transform: function (html) {
@@ -100,7 +107,7 @@ function getLinksToDesigner() {
 
     function next() {
 
-        if (i <= linksToDesigner.length) {
+        if (i <= 10 /* linksToDesigner.length */) {  //EDIT LENGTH HERE
 
             DataForEachYear[i].cities.map(city => {
                 const cityString = city
@@ -113,7 +120,6 @@ function getLinksToDesigner() {
                 const cityToAddToLInk = city
                 const joined = link.concat(cityToAddToLInk);
                 fixedArrayOfLinkstoDesigner.push(joined)
-                //console.log(joined);
             })
             /* 
             console.log(linksToDesigner[i - 1])
@@ -126,7 +132,7 @@ function getLinksToDesigner() {
 
 
         } //end of if-Statement
-        else {           
+        else {
             executeLinksOfEachYearAndCity(fixedArrayOfLinkstoDesigner);
         }
 
@@ -137,7 +143,121 @@ function getLinksToDesigner() {
 
 
 
-function executeLinksOfEachYearAndCity(LinksToDesigner) {
-    console.log(LinksToDesigner)
-}
+function executeLinksOfEachYearAndCity(LinkstoDesingers) {
+    let i = 0;
+    linksToRunways = [];
 
+    function next() {
+        if (i < 10/* LinkstoDesingers.length */) { //EDIT Length here
+            let options = {
+                uri: LinkstoDesingers[i],
+                transform: function (html) {
+                    return cheerio.load(html);
+                }
+            }
+
+            rp(options)
+                .then(function ($) {
+
+                    process.stdout.write('Get Desinger...');
+                    $('.tags-list li').each(function (i, elem) {
+                        const ht = $(this).html();
+                        linksToRunways.push(`http://vogue.de` + $(ht).attr('href') + `/runway`);
+                    });
+
+
+                    i++;
+                    return next();
+
+                }).catch((err) => {
+                    i++;
+                    return next();
+                    console.log('error scraping Designers')
+                });
+
+
+        } //end if
+        else {
+            console.log('i is bigger then LinkstoDesingers.length')
+            accesAllLinksToAllRunways(linksToRunways)
+        }
+    } //end next()
+    return next();
+}; //end getCitiesOfEachYear()
+
+
+
+
+function accesAllLinksToAllRunways(linksToRunways) {
+    console.log(linksToRunways);
+    let i = 0;
+
+    function next() {
+        if (i < 4 /* linksToRunways.length */) { //EDIT length here 
+            let options = {
+                uri: linksToRunways[i],
+                transform: function (html) {
+                    return cheerio.load(html);
+                }
+            };
+            rp(options)
+                .then(function ($) {
+
+                    $('#article-gallery-overview-items img').each(function (i, elem) {
+                        let li = $(this).attr('src') ? $(this).attr('src') : null
+                        let ligeneric = li.replace('v100x150', 'generic_large')
+                        img.push({ key: i, url: `http://www.vogue.de` + ligeneric })
+                    })
+
+                    $('.article-header h1').each(function (i, elem) {
+                        const h1 = $(this).text()
+                        words.push(h1)
+                        title = h1
+                    })
+
+                    $('.article-content p').each(function (i, elem) {
+                        const p = $(this).text() ? $(this).text() : null
+                        words.push(p)
+                    })
+
+                })
+                .then(() => {
+                    for (let i = 0; i < img.length; i++) {
+                        download(img[i].url, 'dist').then(() => {
+                            process.stdout.write('DowloadImage...');
+                        });
+                    }
+                })
+                .then(() => {
+                    console.log("\x1b[32m", 'Done downloading Images: ' + options.uri)
+                    img = []
+                })
+                .then(() => {
+                    const file = './dist/file.txt'
+                    fs.outputFile(file, words)
+                        .then(() => fs.readFile(file, 'utf8'))
+                        .then(data => {
+                            process.stdout.write("\x1b[36m", 'createdTexfile...');
+                            words = []
+                        })
+                        .catch(err => {
+                            console.error(err)
+                        })
+                }).then(() => {
+                    i++;
+                    return next();
+                })
+                .catch((err) => {
+                    i++;
+                    return next();
+                    console.log(err)
+                });
+
+        }//end of if Loop 
+        else {
+            console.log("\x1b[32m", 'Finally, you are done Vera ! :)')
+        }
+
+    }// end of next ()
+    return next();
+};// end getLinksToDesigner()

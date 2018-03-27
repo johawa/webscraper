@@ -51,7 +51,7 @@ function getCitiesOfEachYear(CollectionLinks) {
     let cities = []
     let i = 0;
     function next() {
-        if (i < CollectionLinks.length ) {
+        if (i < CollectionLinks.length) {   ///EDIT Length HERE
             let options = {
                 uri: CollectionLinks[i].uri,
                 transform: function (html) {
@@ -100,7 +100,7 @@ function getLinksToDesigner() {
 
     function next() {
 
-        if (i <= linksToDesigner.length) {
+        if (i <= linksToDesigner.length) {  //EDIT LENGTH HERE
 
             DataForEachYear[i].cities.map(city => {
                 const cityString = city
@@ -113,7 +113,7 @@ function getLinksToDesigner() {
                 const cityToAddToLInk = city
                 const joined = link.concat(cityToAddToLInk);
                 fixedArrayOfLinkstoDesigner.push(joined)
-                console.log(joined);
+                //console.log(joined);
             })
             /* 
             console.log(linksToDesigner[i - 1])
@@ -126,6 +126,9 @@ function getLinksToDesigner() {
 
 
         } //end of if-Statement
+        else {
+            executeLinksOfEachYearAndCity(fixedArrayOfLinkstoDesigner);
+        }
 
     } //end of next()
     return next();
@@ -133,3 +136,64 @@ function getLinksToDesigner() {
 
 
 
+
+function executeLinksOfEachYearAndCity(LinkstoDesingers) {
+    let i = 0;
+    linksToRunways = [];
+
+    function next() {
+        if (i < LinkstoDesingers.length) {
+            let options = {
+                uri: LinkstoDesingers[i],
+                transform: function (html) {
+                    return cheerio.load(html);
+                }
+            }
+
+            rp(options)
+                .then(function ($) {
+
+                    process.stdout.write('Get Desinger...');
+                    $('.tags-list li').each(function (i, elem) {
+                        const ht = $(this).html();
+                        linksToRunways.push(`http://vogue.de` + $(ht).attr('href') + `/runway`);
+                    });
+
+
+                    i++;
+                    return next();
+
+                }).catch((err) => {
+                    i++;
+                    return next();
+                    console.log('error scraping Designers')
+                });
+
+
+        } //end if
+        else {
+            console.log('i is bigger then LinkstoDesingers.length')
+            console.log(linksToRunways)
+            accesAllLinksToAllRunways(linksToRunways)
+        }
+    } //end next()
+    return next();
+}; //end getCitiesOfEachYear()
+
+
+
+
+function accesAllLinksToAllRunways(linksToRunways) {
+    console.log(linksToRunways);
+/*     let options = {
+        uri: linksToRunways[1],
+        transform: function (html) {
+            return cheerio.load(html);
+        }
+    }
+
+    rp(options)
+        .then(function ($) {
+
+        }) */
+};// end getLinksToDesigner()
