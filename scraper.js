@@ -5,6 +5,8 @@ const cheerio = require('cheerio')
 const fs = require('fs-extra')
 //write files
 const download = require('download');
+var status = require('node-status')
+
 //download System
 
 
@@ -49,7 +51,7 @@ rp(options)
         getCitiesOfEachYear(CollectionLinks)
     })
     .catch((err) => {
-        console.log(err)
+        //console.log(err)
     });
 
 
@@ -144,6 +146,7 @@ function getLinksToDesigner() {
 
 
 function executeLinksOfEachYearAndCity(LinkstoDesingers) {
+    console.log(LinkstoDesingers)
     let i = 0;
     linksToRunways = [];
 
@@ -189,11 +192,15 @@ function executeLinksOfEachYearAndCity(LinkstoDesingers) {
 
 
 function accesAllLinksToAllRunways(linksToRunways) {
-    console.log(linksToRunways);
+    console.log("\x1b[36m",'Runways_To_Download : ' + linksToRunways.length);
     let i = 0;
+    let folderNameDesigner = '';
+    let folderNameSeason = '';
+    let runway = status.addItem('Runways_Dowloaded')
+    status.start()
 
     function next() {
-        if (i < 4 /* linksToRunways.length */) { //EDIT length here 
+        if (i < 10 /* linksToRunways.length */) { //EDIT length here 
             let options = {
                 uri: linksToRunways[i],
                 transform: function (html) {
@@ -222,42 +229,59 @@ function accesAllLinksToAllRunways(linksToRunways) {
 
                 })
                 .then(() => {
+                    const str = options.uri.toString()
+                    const sliced = str.split("/");
+                    const slicedReversed = sliced.reverse();
+                    folderNameDesigner = slicedReversed[1]
+                    folderNameSeason = slicedReversed[3]
+
+                })
+                .then(() => {
                     for (let i = 0; i < img.length; i++) {
-                        download(img[i].url, 'dist').then(() => {
-                            process.stdout.write('DowloadImage...');
+                        const folder = `Archiv/${folderNameDesigner}/${folderNameSeason}`
+                        download(img[i].url, folder).then(() => {
+                            //process.stdout.write('DowloadImage...');
                         });
                     }
                 })
                 .then(() => {
-                    console.log("\x1b[32m", 'Done downloading Images: ' + options.uri)
+                    //process.stdout.write('Done downloading Images: ' + options.uri)
+                    runway.inc(1)
                     img = []
                 })
                 .then(() => {
-                    const file = './dist/file.txt'
+                    const file = `./Archiv/${folderNameDesigner}/${folderNameSeason}/description/file.txt`
                     fs.outputFile(file, words)
                         .then(() => fs.readFile(file, 'utf8'))
                         .then(data => {
-                            process.stdout.write("\x1b[36m", 'createdTexfile...');
+                            //process.stdout.write('createdTexfile...');
                             words = []
                         })
                         .catch(err => {
-                            console.error(err)
+                            //console.error(err)
                         })
                 }).then(() => {
+                    folderNameDesigner = '';
+                    folderNameSeason = '';
+
                     i++;
                     return next();
                 })
                 .catch((err) => {
+                    folderNameDesigner = '';
+                    folderNameSeason = '';
+
                     i++;
                     return next();
-                    console.log(err)
+                    //console.log(err)
                 });
 
         }//end of if Loop 
         else {
-            console.log("\x1b[32m", 'Finally, you are done Vera ! :)')
+            status.stop()
+            console.log("\x1b[32m", 'Finally, you are done Vera ! :)             ')
         }
 
     }// end of next ()
     return next();
-};// end getLinksToDesigner()
+};// end getLinksToDesigner() 
